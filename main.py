@@ -20,7 +20,7 @@ app = FastAPI()
 AUTH_TOKEN = "8985ca372f1cbd63dedd058f1838e3f03020d6c2f0c063235b74f7962fccfe5a"
 
 # Semaphore to limit concurrency of GPU/LLM API calls
-MAX_CONCURRENT_REQUESTS = 1
+MAX_CONCURRENT_REQUESTS = 10
 semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
 class RunRequest(BaseModel):
