@@ -1,13 +1,9 @@
-fastapi==0.116.1
-uvicorn==0.35.0
-requests==2.32.4
-python-dotenv==1.1.1
-pydantic==2.11.7
-pydantic-settings==2.10.1
-pydantic-core==2.33.2
-langchain==0.3.27
-langchain-community==0.3.27
-langchain-google-genai==2.1.8
-faiss-cpu==1.11.0.post1
-rapidfuzz==3.13.0
-numpy==2.1.0  # Updated per langchain-community and faiss-cpu compatibility
+fastapi
+uvicorn
+requests
+langchain_google_genai
+langchain_community
+rapidfuzz
+pypdf
+faiss-gpu
+faiss-cpu
