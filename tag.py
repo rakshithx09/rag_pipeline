@@ -148,7 +148,7 @@ def answer_question_with_context(
         return "No relevant chunks found to answer the query."
 
     filtered_chunks = [all_chunks[i] for i in filtered_indices]
-    filtered_vectorstore = FAISS.from_documents(all_chunks, embedding_model)
+    filtered_vectorstore = FAISS.from_documents(filtered_chunks, embedding_model)
 
     # Use similarity_search_with_score instead of raw _faiss_index.search()
     retrieved_docs_with_scores = filtered_vectorstore.similarity_search_with_score(query, k=k_results)

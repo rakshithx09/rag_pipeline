@@ -5,5 +5,5 @@ langchain_google_genai
 langchain_community
 rapidfuzz
 pypdf
-faiss-gpu
 faiss-cpu
+langchain_experimental
