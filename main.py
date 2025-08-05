@@ -54,7 +54,6 @@ async def hackrx_run(request: RunRequest, authorization: Optional[str] = Header(
     expected = f"Bearer {AUTH_TOKEN}"
     print("Request recieved!")
 
-
     try:
         async with httpx.AsyncClient(
             http2=True,
