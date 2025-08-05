@@ -56,7 +56,7 @@ async def hackrx_run(
         all_chunks = chunk_store.get_chunks()
 
         # Load or create vectorstore (embedding index)
-        chunk_store.load_vectorstore()
+        chunk_store.load_vectorstore(embedding_model)
         vectorstore = chunk_store.get_vectorstore()
 
         # Async function with semaphore to limit concurrent calls
