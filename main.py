@@ -33,9 +33,7 @@ async def hackrx_run(
     authorization: Optional[str] = Header(None)
 ):
     expected = f"Bearer {AUTH_TOKEN}"
-    if authorization != expected:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
+    
     # Download the PDF document from the URL
     try:
         resp = requests.get(request.documents)
@@ -87,13 +85,10 @@ async def hackrx_run(
         tasks = [answer_single_question(q) for q in request.questions]
         answers_list = await asyncio.gather(*tasks)
 
-        # Map questions to their respective answers
-        answers = dict(zip(request.questions, answers_list))
+        # Return answers as an array of strings in order
+        return {
+            "answers": answers_list
+        }
 
     finally:
         os.remove(tmp_pdf.name)
-
-    return {
-        "status": "success",
-        "answers": answers
-    }
