@@ -1,69 +1,50 @@
-import os
-import pickle
 from typing import List
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyMuPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain.schema import Document
+from io import BytesIO
+import tempfile
+import os
 
-
-def load_and_chunk_pdf(pdf_path: str, chunk_size: int = 600, chunk_overlap: int = 75) -> List[Document]:
-    loader = PyPDFLoader(pdf_path)
-    pages = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    chunks = splitter.split_documents(pages)
-    # Remove metadata and keep only pure text
-    pure_chunks = [Document(page_content=chunk.page_content, metadata={}) for chunk in chunks]
-    return pure_chunks
-
+def load_and_chunk_pdf_from_filelike(file_like: BytesIO, chunk_size: int = 600, chunk_overlap: int = 75) -> List[Document]:
+    # Save BytesIO to a real temporary file for PyMuPDFLoader
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(file_like.read())
+        tmp_path = tmp.name
+    try:
+        loader = PyMuPDFLoader(tmp_path)
+        pages = loader.load()
+        splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        chunks = splitter.split_documents(pages)
+        pure_chunks = [Document(page_content=chunk.page_content, metadata={}) for chunk in chunks]
+        return pure_chunks
+    finally:
+        os.unlink(tmp_path)
 
 class ChunkStore:
-    _instance = None
-    _chunks: List[Document] = []
-    _vectorstore: FAISS = None
+    def __init__(self):
+        self._chunks: List[Document] = []
+        self._vectorstore: FAISS = None
 
-    _chunks_cache_file = "chunks_cache.pkl"
-    _vectorstore_cache_dir = "vectorstore_store"  # Use as directory
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(ChunkStore, cls).__new__(cls)
-        return cls._instance
-
-    def load_chunks(self, pdf_path: str):
-        if not self._chunks:
-            if os.path.exists(self._chunks_cache_file):
-                print(f"Loading chunks from cache file: {self._chunks_cache_file}")
-                with open(self._chunks_cache_file, "rb") as f:
-                    self._chunks = pickle.load(f)
-                print(f"Loaded {len(self._chunks)} chunks from cache.")
-            else:
-                print("No chunks cache found. Loading and chunking PDF...")
-                self._chunks = load_and_chunk_pdf(pdf_path)
-                print(f"Chunked into {len(self._chunks)} pieces.")
-                with open(self._chunks_cache_file, "wb") as f:
-                    pickle.dump(self._chunks, f)
-                print(f"Saved chunks cache to {self._chunks_cache_file}")
+    def load_chunks_from_filelike(self, file_like: BytesIO):
+        self._chunks = load_and_chunk_pdf_from_filelike(file_like)
+        return self._chunks
 
     def get_chunks(self) -> List[Document]:
         return self._chunks
 
-    def load_vectorstore(self, embedding_model):
-        if self._vectorstore is None:
-            if os.path.exists(self._vectorstore_cache_dir):
-                print(f"Loading vectorstore from cache folder: {self._vectorstore_cache_dir}")
-                self._vectorstore = FAISS.load_local(
-                    self._vectorstore_cache_dir,
-                    embedding_model,
-                    allow_dangerous_deserialization=True
-                )
-                print("Vectorstore loaded from cache.")
-            else:
-                print("No vectorstore cache found. Embedding all chunks...")
-                self._vectorstore = FAISS.from_documents(self._chunks, embedding_model)
-                print("Embedding complete. Saving vectorstore cache...")
-                self._vectorstore.save_local(self._vectorstore_cache_dir)
-                print(f"Saved vectorstore cache to {self._vectorstore_cache_dir}")
+    # chunkstore.py
+    def create_vectorstore_from_embeddings(self, chunks, embeddings, embedding_model):
+        texts = [chunk.page_content for chunk in chunks]
+        text_embeddings = list(zip(texts, embeddings))  # this is a list of (text, embedding)
+        self._vectorstore = FAISS.from_embeddings(
+            text_embeddings=text_embeddings,
+            embedding=embedding_model
+        )
+        return self._vectorstore
+
+
 
     def get_vectorstore(self) -> FAISS:
         return self._vectorstore
