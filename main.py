@@ -53,7 +53,8 @@ async def batch_embed_chunks(embedding_model, all_chunks, batch_size=32):
 async def hackrx_run(request: RunRequest, authorization: Optional[str] = Header(None)):
     expected = f"Bearer {AUTH_TOKEN}"
     print("Request recieved!")
-
+    if authorization != expected:
+        raise HTTPException(status_code=403, detail="Unauthorized")
 
     try:
         async with httpx.AsyncClient(
@@ -80,7 +81,6 @@ async def hackrx_run(request: RunRequest, authorization: Optional[str] = Header(
 
     embeddings = await batch_embed_chunks(embedding_model, all_chunks, batch_size=128)
 
-    # Pass embedding_model as third argument for FAISS.from_embeddings
     vectorstore = await asyncio.to_thread(
         chunk_store.create_vectorstore_from_embeddings,
         all_chunks,
@@ -91,7 +91,6 @@ async def hackrx_run(request: RunRequest, authorization: Optional[str] = Header(
     llm_api_key = api_key_manager.get_next_key()
     llm_model = ChatGoogleGenerativeAI(model=llm_model_name, api_key=llm_api_key)
 
-    # Prepare prompt template
     qa_prompt = PromptTemplate(
         input_variables=["context", "question"],
         template="""
@@ -107,7 +106,6 @@ Answer:
 """,
     )
 
-    # Prepare questions and their contexts by searching vectorstore
     def get_contexts_for_all():
         results = []
         for question in request.questions:
@@ -127,17 +125,21 @@ Answer:
         for context, question in zip(contexts, request.questions)
     ]
 
-    # Compose RunnableSequence: prompt followed by llm
     qa_chain = qa_prompt | llm_model
-    # RunnableParallel expects a dict mapping step names to runnables
     parallel_chain = RunnableParallel({"answer": qa_chain})
 
-    # Batch run all questions in parallel
     results = parallel_chain.batch(question_inputs)
-    # Extract answer strings from dict results
-    answers_list = [
-        r.get("answer", "").strip() if isinstance(r.get("answer", ""), str) else str(r.get("answer", "")).strip()
-        for r in results
-    ]
 
-    return {"answers": answers_list}
+    answers_list = []
+    for r in results:
+        answer = r.get("answer", "")
+        if hasattr(answer, "content"):
+            answer_text = answer.content.strip()
+        elif isinstance(answer, str):
+            answer_text = answer.strip()
+        else:
+            answer_text = str(answer).strip()
+        answers_list.append(answer_text)
+
+    # Return a plain JSON array of answer strings as required
+    return answers_list
