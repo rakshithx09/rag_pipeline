@@ -66,7 +66,7 @@ async def hackrx_run(
 
                 def sync_work():
                     query_tags = generate_tags_from_query(question)
-                    filtered_indices = heuristic_chunk_filter(all_chunks, query_tags, totalMatches=3, threshold=75)
+                    filtered_indices = heuristic_chunk_filter(all_chunks, query_tags, totalMatches=2, threshold=75)
                     if not filtered_indices:
                         filtered_indices = heuristic_chunk_filter(all_chunks, query_tags, totalMatches=2, threshold=90)
                     if not filtered_indices:
