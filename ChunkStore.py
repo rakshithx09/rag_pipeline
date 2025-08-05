@@ -7,21 +7,28 @@ from langchain_community.vectorstores import FAISS
 from langchain.schema import Document
 
 
+def load_and_chunk_pdf(pdf_path: str, chunk_size: int = 600, chunk_overlap: int = 75) -> List[Document]:
+    loader = PyPDFLoader(pdf_path)
+    pages = loader.load()
+    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    chunks = splitter.split_documents(pages)
+    # Remove metadata and keep only pure text
+    pure_chunks = [Document(page_content=chunk.page_content, metadata={}) for chunk in chunks]
+    return pure_chunks
 
 
 class ChunkStore:
     _instance = None
     _chunks: List[Document] = []
     _vectorstore: FAISS = None
-    _chunks_cache_file = "chunks_cache.pkl"
-    _vectorstore_cache_dir = "vectorstore_store"   # Use a directory, not a pkl file!
 
+    _chunks_cache_file = "chunks_cache.pkl"
+    _vectorstore_cache_dir = "vectorstore_store"  # Use as directory
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(ChunkStore, cls).__new__(cls)
         return cls._instance
-
 
     def load_chunks(self, pdf_path: str):
         if not self._chunks:
@@ -38,10 +45,8 @@ class ChunkStore:
                     pickle.dump(self._chunks, f)
                 print(f"Saved chunks cache to {self._chunks_cache_file}")
 
-
     def get_chunks(self) -> List[Document]:
         return self._chunks
-
 
     def load_vectorstore(self, embedding_model):
         if self._vectorstore is None:
@@ -60,18 +65,5 @@ class ChunkStore:
                 self._vectorstore.save_local(self._vectorstore_cache_dir)
                 print(f"Saved vectorstore cache to {self._vectorstore_cache_dir}")
 
-
-
     def get_vectorstore(self) -> FAISS:
         return self._vectorstore
-
-
-
-def load_and_chunk_pdf(pdf_path: str) -> List[Document]:
-    loader = PyPDFLoader(pdf_path)
-    pages = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=75)
-    chunks = splitter.split_documents(pages)
-    # Remove metadata (keep only pure text chunks)
-    pure_chunks = [Document(page_content=chunk.page_content, metadata={}) for chunk in chunks]
-    return pure_chunks
