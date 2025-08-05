@@ -53,8 +53,7 @@ async def batch_embed_chunks(embedding_model, all_chunks, batch_size=32):
 async def hackrx_run(request: RunRequest, authorization: Optional[str] = Header(None)):
     expected = f"Bearer {AUTH_TOKEN}"
     print("Request recieved!")
-    if authorization != expected:
-        raise HTTPException(status_code=403, detail="Unauthorized")
+
 
     try:
         async with httpx.AsyncClient(
@@ -142,4 +141,4 @@ Answer:
         answers_list.append(answer_text)
 
     # Return a plain JSON array of answer strings as required
-    return answers_list
+    return {"answers": answers_list}
