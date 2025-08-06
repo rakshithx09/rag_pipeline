@@ -9,3 +9,4 @@ faiss-cpu
 langchain_experimental
 httpx[http2]
 pymupdf
+numpy
